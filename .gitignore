@@ -12,9 +12,10 @@ tread-bin-UNIX.*
 # Executable binary files
 src/bin
 
-# Build log
+# Build logs
 build.bat.log
 build.sh.log
+*.log
 
 # Compiled object files
 *.o

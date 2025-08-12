@@ -64,11 +64,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang
 
-      # 6. Run ./build.sh -clang to build with clang
-      - name: Build with Clang
+      # 6. Run ./build.sh -clang to build with clang and display logs
+      - name: Build with Clang and Display Logs
         run: |
           chmod +x ./build.sh # Make the build script executable
-          ./build.sh -clang
+          # Run the build script, capture its output, and tee it to a log file
+          ./build.sh -clang 2>&1 | tee build_output.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]} # Get the exit code of ./build.sh
+
+          echo "--- Detailed Build Output from ./build.sh ---"
+          cat build_output.log # Display the full captured output to the GitHub Actions console
+          echo "---------------------------------------------"
+
+          # Fail the GitHub Actions step if the build script itself failed
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "##[error]The build script (./build.sh -clang) failed with exit code $BUILD_EXIT_CODE."
+            exit $BUILD_EXIT_CODE
+          fi
 
       # 7. Run ./dist/gha/packagezip from the base directory
       - name: Package Binaries for UNIX
