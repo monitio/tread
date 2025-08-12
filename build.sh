@@ -92,7 +92,10 @@ fi
     echo "Warning: ./LICENSE not found, skipping copy."
   fi
 
-  #clear
+  # Conditionally clear the screen only if NOT running in CI (GitHub Actions)
+  if [ -z "$CI" ]; then
+    clear
+  fi
 
   if [ "$GCC_FLAG" -eq 1 ]; then
     COMPILER="gcc"

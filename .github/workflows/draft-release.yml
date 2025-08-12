@@ -66,6 +66,15 @@ jobs:
       - name: Package Binaries for UNIX
         run: ./dist/gha/packagezip # Assumes this executable is in dist/gha and creates tread-bin-UNIX.zip in the root
 
+      # Debugging step: List files in root and dist/
+      - name: List Generated Files for Debugging
+        run: |
+          echo "--- Listing files in repository root ---"
+          ls -lh .
+          echo "--- Listing files recursively in dist/ ---"
+          ls -lhR dist/
+          echo "----------------------------------------"
+
       # 7. Create the draft pre-release and attach asset
       - name: Create Draft GitHub Release with Asset
         uses: softprops/action-gh-release@v1
@@ -83,6 +92,6 @@ jobs:
             # What's changed?
             ${{ steps.extract_desc.outputs.commit_description }}
           files: |
-            ./tread-bin-UNIX.zip # Attach the generated zip file
+            ./tread-bin-UNIX.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
