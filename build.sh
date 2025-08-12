@@ -60,8 +60,6 @@ fi
 
 # Start logging all output
 (
-  echo "--- Starting build process and redirecting output ---" # Added diagnostic echo
-
   # Delete the dist folder for a clean output and recreate it
   echo "Cleaning and recreating 'dist' directory..."
   rm -rf dist
@@ -94,11 +92,10 @@ fi
     echo "Warning: ./LICENSE not found, skipping copy."
   fi
 
-  # Removed 'clear' command here
+  clear
 
   if [ "$GCC_FLAG" -eq 1 ]; then
     COMPILER="gcc"
-    echo "Building with GCC..."
 
     # The notes about building. (logger functionality simplified for bash)
     $COMPILER ./src/logger.c -o ./dist/logger
@@ -134,7 +131,6 @@ fi
     rm -f dist/logger
   elif [ "$CLANG_FLAG" -eq 1 ]; then
     COMPILER="clang"
-    echo "Building with Clang..."
 
     # The notes about building. (logger functionality simplified for bash)
     $COMPILER ./src/logger.c -o ./dist/logger

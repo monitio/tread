@@ -38,33 +38,13 @@ jobs:
           echo "$desc" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # 4. Create the draft pre-release with template
-      - name: Draft GitHub Release
-        uses: actions/create-release@v1
-        id: create_release # Added ID to reference its outputs later
-        with:
-          tag_name: v${{ steps.extract_sha.outputs.short_sha }} # Using short SHA in tag name for uniqueness
-          release_name: Pre-release v${{ steps.extract_sha.outputs.short_sha }}
-          draft: true
-          prerelease: true
-          body: |
-            Pre-release v${{ steps.extract_sha.outputs.short_sha }}
-            **Triggered by committer:** @${{ github.actor }}
-
-            ---
-
-            # What's changed?
-            ${{ steps.extract_desc.outputs.commit_description }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 5. Install Clang
+      # 4. Install Clang (moved up as it's needed before building)
       - name: Install Clang Compiler
         run: |
           sudo apt-get update
           sudo apt-get install -y clang
 
-      # 6. Run ./build.sh -clang to build with clang and display logs
+      # 5. Run ./build.sh -clang to build with clang and display logs
       - name: Build with Clang and Display Logs
         run: |
           chmod +x ./build.sh # Make the build script executable
@@ -82,17 +62,27 @@ jobs:
             exit $BUILD_EXIT_CODE
           fi
 
-      # 7. Run ./dist/gha/packagezip from the base directory
+      # 6. Run ./dist/gha/packagezip from the base directory
       - name: Package Binaries for UNIX
         run: ./dist/gha/packagezip # Assumes this executable is in dist/gha and creates tread-bin-UNIX.zip in the root
 
-      # 8. Attach tread-bin-UNIX.zip to the draft release
-      - name: Upload Tread UNIX Binary to Release
-        uses: actions/upload-release-asset@v1
+      # 7. Create the draft pre-release and attach asset
+      - name: Create Draft GitHub Release with Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.extract_sha.outputs.short_sha }}
+          name: Pre-release v${{ steps.extract_sha.outputs.short_sha }}
+          draft: true
+          prerelease: true
+          body: |
+            Pre-release v${{ steps.extract_sha.outputs.short_sha }}
+            **Triggered by committer:** @${{ github.actor }}
+
+            ---
+
+            # What's changed?
+            ${{ steps.extract_desc.outputs.commit_description }}
+          files: |
+            ./tread-bin-UNIX.zip # Attach the generated zip file
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # URL from the draft release step
-          asset_path: ./tread-bin-UNIX.zip # Path to the generated zip file
-          asset_name: tread-bin-UNIX.zip
-          asset_content_type: application/zip # Set content type for proper handling
