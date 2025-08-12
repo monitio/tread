@@ -60,17 +60,37 @@ fi
 
 # Start logging all output
 (
-  # Delete the dist folder for a clean output
-  rm -rf dist/* # Use -rf for recursive force deletion
-
-  # Create the necessary output directories
+  # Delete the dist folder for a clean output and recreate it
+  echo "Cleaning and recreating 'dist' directory..."
+  rm -rf dist
   mkdir -p dist dist/2D dist/3D dist/gha dist/libs
 
-  cp ./src/tread.h ./dist/
+  # Copy necessary files to the dist directory
+  echo "Copying essential files to 'dist'..."
+  if [ -f ./src/tread.h ]; then
+    cp ./src/tread.h ./dist/
+  else
+    echo "Error: ./src/tread.h not found!"
+    exit 1
+  fi
 
-  cp ./.gitignore ./dist/
-  cp ./README.md ./dist/
-  cp ./LICENSE ./dist/
+  if [ -f ./.gitignore ]; then
+    cp ./.gitignore ./dist/
+  else
+    echo "Warning: ./.gitignore not found, skipping copy."
+  fi
+
+  if [ -f ./README.md ]; then
+    cp ./README.md ./dist/
+  else
+    echo "Warning: ./README.md not found, skipping copy."
+  fi
+
+  if [ -f ./LICENSE ]; then
+    cp ./LICENSE ./dist/
+  else
+    echo "Warning: ./LICENSE not found, skipping copy."
+  fi
 
   clear
 
@@ -88,7 +108,7 @@ fi
     $COMPILER ./src/gha/packagezip.c -o ./dist/gha/packagezip
 
     # Main working bits:
-    #$COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm
+    $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm # Uncommented
     $COMPILER ./src/seperate/animator/animator.c -o ./dist/anim -lm
     $COMPILER ./src/seperate/libloader/libloader.c -o ./dist/libloader -lm
 
@@ -124,7 +144,7 @@ fi
     gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip # Still using gcc as in original
 
     # Main working bits:
-    #$COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm
+    $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm # Uncommented
     $COMPILER ./src/seperate/animator/animator.c -o ./dist/anim -lm
     $COMPILER ./src/seperate/libloader/libloader.c -o ./dist/libloader -lm
 
