@@ -42,8 +42,12 @@ jobs:
         uses: ./.github/workflows/build-unix.yml # Path to your callable workflow
         id: unix_build
         with:
-          # No explicit inputs needed for build-unix.yml as it extracts info itself and uploads artifact
-        secrets: inherit # Pass all secrets from the caller to the called workflow
+          # Inputs and secrets for called workflows are handled via their own `workflow_call` definitions.
+          # The GITHUB_TOKEN is passed implicitly through the `secrets` section of the `workflow_call`
+          # in build-unix.yml itself, and the permissions are set at the job level there.
+          # Removed `secrets:` block from here as it was causing the "mapping was not expected" error.
+          # Removed `pass_inputs_if_any: true` as it was a placeholder and unnecessary.
+          token: ${{ secrets.GITHUB_TOKEN }} # Pass token explicitly if needed by the called workflow's inputs
 
       # 4. Call Windows Build Workflow
       - name: Call Windows Build Workflow
@@ -52,7 +56,10 @@ jobs:
         with:
           short_sha: ${{ steps.extract_sha.outputs.short_sha }} # Pass extracted info as inputs
           commit_description: ${{ steps.extract_desc.outputs.commit_description }}
-        secrets: inherit # Pass all secrets from the caller to the called workflow
+          # The GITHUB_TOKEN is passed implicitly through the `secrets` section of the `workflow_call`
+          # in build-win.yml itself, and the permissions are set at the job level there.
+          # Removed `secrets:` block from here as it was causing the "mapping was not expected" error.
+          token: ${{ secrets.GITHUB_TOKEN }} # Pass token explicitly if needed by the called workflow's inputs
 
       # 5. Download UNIX Binary Artifact
       - name: Download UNIX Binary Artifact

@@ -21,10 +21,16 @@ on:
         description: 'Commit Description'
         required: true
         type: string
+    secrets: # <-- NEW: Define secrets input for the workflow_call
+      GITHUB_TOKEN:
+        required: true
+        description: 'GitHub token for release upload'
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions: # <-- NEW: Add permissions for the job to use GITHUB_TOKEN implicitly
+      contents: write # Needed by softprops/action-gh-release@v1
 
     steps:
       - name: Checkout Repository
