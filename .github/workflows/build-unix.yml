@@ -10,16 +10,14 @@ on:
       commit_description:
         description: "Commit description"
         value: ${{ jobs.build.outputs.commit_description }}
-    secrets: # <-- NEW: Define secrets input for the workflow_call
-      GITHUB_TOKEN:
-        required: true
-        description: 'GitHub token for artifact upload permissions'
+    # Removed the secrets: GITHUB_TOKEN: block as it's a system-reserved name
+    # The GITHUB_TOKEN is implicitly available to jobs with write permissions.
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: # <-- NEW: Add permissions for the job to use GITHUB_TOKEN implicitly
-      contents: write # Needed by actions/upload-artifact@v3
+    permissions: # Add permissions for the job to use GITHUB_TOKEN implicitly
+      contents: write # Needed by actions/upload-artifact@v4
     outputs: # Define outputs for the calling workflow
       short_sha: ${{ steps.extract_sha.outputs.short_sha }}
       commit_description: ${{ steps.extract_desc.outputs.commit_description }}
@@ -69,7 +67,7 @@ jobs:
         run: ./dist/gha/packagezip
 
       - name: Upload UNIX Binary Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tread-bin-UNIX
           path: ./tread-bin-UNIX.zip
