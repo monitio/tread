@@ -60,6 +60,8 @@ fi
 
 # Start logging all output
 (
+  echo "--- Starting build process and redirecting output ---" # Added diagnostic echo
+
   # Delete the dist folder for a clean output and recreate it
   echo "Cleaning and recreating 'dist' directory..."
   rm -rf dist
@@ -92,7 +94,7 @@ fi
     echo "Warning: ./LICENSE not found, skipping copy."
   fi
 
-  clear
+  # Removed 'clear' command here
 
   if [ "$GCC_FLAG" -eq 1 ]; then
     COMPILER="gcc"
@@ -108,7 +110,7 @@ fi
     $COMPILER ./src/gha/packagezip.c -o ./dist/gha/packagezip
 
     # Main working bits:
-    $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm # Uncommented
+    $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm
     $COMPILER ./src/seperate/animator/animator.c -o ./dist/anim -lm
     $COMPILER ./src/seperate/libloader/libloader.c -o ./dist/libloader -lm
 
@@ -144,7 +146,7 @@ fi
     gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip # Still using gcc as in original
 
     # Main working bits:
-    $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm # Uncommented
+    $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm
     $COMPILER ./src/seperate/animator/animator.c -o ./dist/anim -lm
     $COMPILER ./src/seperate/libloader/libloader.c -o ./dist/libloader -lm
 
