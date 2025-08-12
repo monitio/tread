@@ -39,15 +39,15 @@ jobs:
 
       # 3. Call UNIX Build Workflow
       - name: Call UNIX Build Workflow
-        # Corrected: Hardcoding repository name as requested
-        uses: monitio/tread/.github/workflows/build-unix.yml@${{ github.ref }}
+        # CORRECTED: Using github.sha for a static reference to the current commit's workflow
+        uses: monitio/tread/.github/workflows/build-unix.yml@${{ github.sha }}
         id: unix_build
         with: {} # Explicit empty 'with' block for workflows with no inputs
 
       # 4. Call Windows Build Workflow
       - name: Call Windows Build Workflow
-        # Corrected: Hardcoding repository name as requested
-        uses: monitio/tread/.github/workflows/build-win.yml@${{ github.ref }}
+        # CORRECTED: Using github.sha for a static reference to the current commit's workflow
+        uses: monitio/tread/.github/workflows/build-win.yml@${{ github.sha }}
         id: win_build
         with:
           short_sha: ${{ steps.extract_sha.outputs.short_sha }} # Pass extracted info as inputs
