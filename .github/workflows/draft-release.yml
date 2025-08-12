@@ -41,9 +41,7 @@ jobs:
       - name: Call UNIX Build Workflow
         uses: ./.github/workflows/build-unix.yml # Path to your callable workflow
         id: unix_build
-        with:
-          # Inputs and secrets for called workflows are handled via their own `workflow_call` definitions.
-          token: ${{ secrets.GITHUB_TOKEN }} # Pass token explicitly if needed by the called workflow's inputs
+        with: {} # Explicit empty 'with' block for workflows with no inputs
 
       # 4. Call Windows Build Workflow
       - name: Call Windows Build Workflow
@@ -52,18 +50,17 @@ jobs:
         with:
           short_sha: ${{ steps.extract_sha.outputs.short_sha }} # Pass extracted info as inputs
           commit_description: ${{ steps.extract_desc.outputs.commit_description }}
-          token: ${{ secrets.GITHUB_TOKEN }} # Pass token explicitly if needed by the called workflow's inputs
 
       # 5. Download UNIX Binary Artifact
       - name: Download UNIX Binary Artifact
-        uses: actions/download-artifact@v4 # Changed from v3 to v4
+        uses: actions/download-artifact@v4
         with:
           name: tread-bin-UNIX # Name must match the artifact name in build-unix.yml
           path: ./.
 
       # 6. Download Windows Binary Artifact
       - name: Download Windows Binary Artifact
-        uses: actions/download-artifact@v4 # Changed from v3 to v4
+        uses: actions/download-artifact@v4
         with:
           name: tread-bin-WIN # Name must match the artifact name in build-win.yml
           path: ./.
