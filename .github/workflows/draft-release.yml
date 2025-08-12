@@ -6,24 +6,19 @@ on:
       - main
 
 permissions:
-  contents: write     # needed to create/update releases
-  id-token: write     # for semantic-release auth if required
-  packages: write     # for any semantic-release plugins that touch packages
+  contents: write
+  id-token: write
+  packages: write
 
 jobs:
-  prepare-and-draft:
-    runs-on: ubuntu-latest
-    # Define outputs for other jobs to consume
-    outputs:
-      short_sha: ${{ steps.extract_sha.outputs.short_sha }}
-      commit_description: ${{ steps.extract_desc.outputs.commit_description }}
-
+  # This job orchestrates the builds and release creation
+  release-orchestrator:
+    runs-on: ubuntu-latest # Can be ubuntu-latest or a small runner since it only calls other workflows and downloads artifacts
     steps:
-      # 1. Check out your code
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Get short (7 characters long) commit SHA code
+      # 1. Get short (7 characters long) commit SHA code (needed for the release tag/name)
       - name: Extract short SHA
         id: extract_sha
         shell: bash
@@ -32,7 +27,7 @@ jobs:
           short_sha="${full_sha:0:7}"
           echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
 
-      # 3. Extract only the commit description (body)
+      # 2. Extract only the commit description (body)
       - name: Extract commit description
         id: extract_desc
         shell: bash
@@ -42,45 +37,39 @@ jobs:
           echo "$desc" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # 4. Install Clang (moved up as it's needed before building)
-      - name: Install Clang Compiler
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang
+      # 3. Call UNIX Build Workflow
+      - name: Call UNIX Build Workflow
+        uses: ./.github/workflows/build-unix.yml # Path to your callable workflow
+        id: unix_build
+        with:
+          # No explicit inputs needed for build-unix.yml as it extracts info itself and uploads artifact
+        secrets: inherit # Pass all secrets from the caller to the called workflow
 
-      # 5. Run ./build.sh -clang to build with clang and display logs
-      - name: Build with Clang and Display Logs
-        run: |
-          chmod +x ./build.sh # Make the build script executable
-          # Run the build script, capture its output, and tee it to a log file
-          ./build.sh -clang 2>&1 | tee build_output.log
-          BUILD_EXIT_CODE=${PIPESTATUS[0]} # Get the exit code of ./build.sh
+      # 4. Call Windows Build Workflow
+      - name: Call Windows Build Workflow
+        uses: ./.github/workflows/build-win.yml # Path to your callable workflow
+        id: win_build
+        with:
+          short_sha: ${{ steps.extract_sha.outputs.short_sha }} # Pass extracted info as inputs
+          commit_description: ${{ steps.extract_desc.outputs.commit_description }}
+        secrets: inherit # Pass all secrets from the caller to the called workflow
 
-          echo "--- Detailed Build Output from ./build.sh ---"
-          cat build_output.log # Display the full captured output to the GitHub Actions console
-          echo "---------------------------------------------"
+      # 5. Download UNIX Binary Artifact
+      - name: Download UNIX Binary Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: tread-bin-UNIX # Name must match the artifact name in build-unix.yml
+          path: ./.
 
-          # Fail the GitHub Actions step if the build script itself failed
-          if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "##[error]The build script (./build.sh -clang) failed with exit code $BUILD_EXIT_CODE."
-            exit $BUILD_EXIT_CODE
-          fi
+      # 6. Download Windows Binary Artifact
+      - name: Download Windows Binary Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: tread-bin-WIN # Name must match the artifact name in build-win.yml
+          path: ./.
 
-      # 6. Run ./dist/gha/packagezip from the base directory
-      - name: Package Binaries for UNIX
-        run: ./dist/gha/packagezip # Assumes this executable is in dist/gha and creates tread-bin-UNIX.zip in the root
-
-      # Debugging step: List files in root and dist/
-      - name: List Generated Files for Debugging (UNIX)
-        run: |
-          echo "--- Listing files in repository root (UNIX) ---"
-          ls -lh .
-          echo "--- Listing files recursively in dist/ (UNIX) ---"
-          ls -lhR dist/
-          echo "----------------------------------------"
-
-      # 7. Create the draft pre-release and attach asset
-      - name: Create Draft GitHub Release with UNIX Asset
+      # 7. Create the draft pre-release and attach both assets
+      - name: Create Draft GitHub Release with Both Assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.extract_sha.outputs.short_sha }}
@@ -96,115 +85,7 @@ jobs:
             # What's changed?
             ${{ steps.extract_desc.outputs.commit_description }}
           files: |
-            ./tread-bin-UNIX.zip # Attach the generated zip file
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-windows:
-    runs-on: windows-latest
-    needs: prepare-and-draft # This job will run after 'prepare-and-draft' completes
-
-    steps:
-      # 1. Check out your code
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      # 2. Get short (7 characters long) commit SHA code from previous job
-      - name: Get Short SHA from previous job
-        id: get_sha
-        shell: powershell
-        run: |
-          $short_sha = "${{ needs.prepare-and-draft.outputs.short_sha }}"
-          echo "short_sha=$short_sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
-
-      # 3. Extract only the commit description (body) from previous job
-      - name: Get Commit Description from previous job
-        id: get_desc
-        shell: powershell
-        run: |
-          # The full description is retrieved as a single string from the previous job's output
-          $commit_description = @"
-${{ needs.prepare-and-draft.outputs.commit_description }}
-"@
-          echo "commit_description<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
-          echo $commit_description | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          echo "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
-      # 4. Install Chocolatey and WinLibs MinGW64
-      - name: Install Chocolatey and WinLibs MinGW64
-        shell: powershell
-        run: |
-          # Install Chocolatey (ensures latest version as part of install script)
-          Write-Host "Installing Chocolatey..."
-          Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-          Write-Host "Chocolatey installed."
-
-          # Install WinLibs MinGW64
-          Write-Host "Installing WinLibs MinGW64 via Chocolatey..."
-          choco install winlibs-mingw64 -y --params="'/NoAutoUpdate'"
-          Write-Host "WinLibs MinGW64 installation command executed."
-
-          # Refresh environment variables to pick up new PATH from MinGW64
-          # This command ensures that 'gcc' is available in the current PowerShell session's PATH
-          refreshenv
-          Write-Host "Environment refreshed."
-
-      # 5. Check that gcc works by running it
-      - name: Verify GCC Installation
-        shell: powershell
-        run: |
-          # Check if gcc is available in PATH. If not, try to locate it based on common WinLibs paths
-          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
-              Write-Warning "GCC not found in PATH directly. Attempting to locate and add to PATH."
-              # Common path for winlibs-mingw64 bin directory within Chocolatey installation
-              $mingwPath = Join-Path $env:ChocolateyInstall "lib\winlibs-mingw64\tools\mingw64\bin"
-              if (Test-Path $mingwPath) {
-                  $env:Path += ";$mingwPath"
-                  Write-Host "Added '$mingwPath' to PATH for this session."
-              } else {
-                  Write-Error "Could not find MinGW64 binaries at expected path: $mingwPath. Please check Chocolatey installation logs for winlibs-mingw64."
-                  exit 1
-              }
-          }
-          Write-Host "Verifying GCC version..."
-          gcc --version # Verify GCC works
-          Write-Host "GCC verification complete."
-
-      # 6. Run ./build.bat -gcc in the repo to build it.
-      - name: Build with GCC (Windows)
-        shell: powershell
-        run: |
-          Write-Host "Running build.bat -gcc..."
-          .\build.bat -gcc # Use .\ for current directory in PowerShell
-          Write-Host "build.bat -gcc completed."
-
-      # 7. Run ./dist/gha/packagezip from the base directory
-      - name: Package Binaries for Windows
-        shell: powershell
-        run: |
-          Write-Host "Running packagezip for Windows..."
-          .\dist\gha\packagezip # Run packagezip from base directory
-          Write-Host "packagezip for Windows completed."
-
-      # Debugging step: List files in root and dist/
-      - name: List Generated Files for Debugging (Windows)
-        shell: powershell
-        run: |
-          Write-Host "--- Listing files in repository root (Windows) ---"
-          Get-ChildItem -Path . | Format-List
-          Write-Host "--- Listing files recursively in dist/ (Windows) ---"
-          Get-ChildItem -Path dist -Recurse | Format-List
-          Write-Host "----------------------------------------"
-
-      # 8. Find the GitHub release made by the Ubuntu job and add the Windows zip
-      - name: Update Draft GitHub Release with Windows Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.prepare-and-draft.outputs.short_sha }} # Use the tag created by the first job
-          files: |
-            ./tread-bin-WIN.zip # Attach the generated Windows zip file (assuming it's in the root)
-          # No need to redefine name, draft, prerelease, or body as they are already set by the first creation
+            ./tread-bin-UNIX.zip
+            ./tread-bin-WIN.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

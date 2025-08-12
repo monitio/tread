@@ -1,0 +1,69 @@
+name: Build UNIX Binaries
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  workflow_call:     # Allows calling from other workflows
+    outputs:
+      short_sha:
+        description: "Short commit SHA"
+        value: ${{ jobs.build.outputs.short_sha }}
+      commit_description:
+        description: "Commit description"
+        value: ${{ jobs.build.outputs.commit_description }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs: # Define outputs for the calling workflow
+      short_sha: ${{ steps.extract_sha.outputs.short_sha }}
+      commit_description: ${{ steps.extract_desc.outputs.commit_description }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Extract short SHA
+        id: extract_sha
+        shell: bash
+        run: |
+          full_sha="${{ github.sha }}"
+          short_sha="${full_sha:0:7}"
+          echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
+
+      - name: Extract commit description
+        id: extract_desc
+        shell: bash
+        run: |
+          desc=$(git log -1 --pretty=%B | tail -n +3)
+          echo "commit_description<<EOF" >> $GITHUB_OUTPUT
+          echo "$desc" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Install Clang Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+
+      - name: Build with Clang and Display Logs
+        run: |
+          chmod +x ./build.sh
+          ./build.sh -clang 2>&1 | tee build_output.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+
+          echo "--- Detailed Build Output from ./build.sh ---"
+          cat build_output.log
+          echo "---------------------------------------------"
+
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "##[error]The build script (./build.sh -clang) failed with exit code $BUILD_EXIT_CODE."
+            exit $BUILD_EXIT_CODE
+          fi
+
+      - name: Package Binaries for UNIX
+        run: ./dist/gha/packagezip
+
+      - name: Upload UNIX Binary Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tread-bin-UNIX
+          path: ./tread-bin-UNIX.zip

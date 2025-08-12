@@ -1,0 +1,105 @@
+name: Build Windows Binaries
+
+on:
+  workflow_dispatch: # Allows manual triggering
+    inputs:
+      short_sha:
+        description: 'Short Commit SHA'
+        required: true
+        type: string
+      commit_description:
+        description: 'Commit Description'
+        required: true
+        type: string
+  workflow_call:     # Allows calling from other workflows
+    inputs:
+      short_sha:
+        description: 'Short Commit SHA'
+        required: true
+        type: string
+      commit_description:
+        description: 'Commit Description'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 1. Install Chocolatey and WinLibs MinGW64
+      - name: Install Chocolatey and WinLibs MinGW64
+        shell: powershell
+        run: |
+          # Install Chocolatey (ensures latest version as part of install script)
+          Write-Host "Installing Chocolatey..."
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          Write-Host "Chocolatey installed."
+
+          # Install WinLibs MinGW64
+          Write-Host "Installing WinLibs MinGW64 via Chocolatey..."
+          choco install winlibs-mingw64 -y --params="'/NoAutoUpdate'"
+          Write-Host "WinLibs MinGW64 installation command executed."
+
+          # Refresh environment variables to pick up new PATH from MinGW64
+          # This command ensures that 'gcc' is available in the current PowerShell session's PATH
+          refreshenv
+          Write-Host "Environment refreshed."
+
+      # 2. Check that gcc works by running it
+      - name: Verify GCC Installation
+        shell: powershell
+        run: |
+          # Check if gcc is available in PATH. If not, try to locate it based on common WinLibs paths
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+              Write-Warning "GCC not found in PATH directly. Attempting to locate and add to PATH."
+              # Common path for winlibs-mingw64 bin directory within Chocolatey installation
+              $mingwPath = Join-Path $env:ChocolateyInstall "lib\winlibs-mingw64\tools\mingw64\bin"
+              if (Test-Path $mingwPath) {
+                  $env:Path += ";$mingwPath"
+                  Write-Host "Added '$mingwPath' to PATH for this session."
+              } else {
+                  Write-Error "Could not find MinGW64 binaries at expected path: $mingwPath. Please check Chocolatey installation logs for winlibs-mingw64."
+                  exit 1
+              }
+          }
+          Write-Host "Verifying GCC version..."
+          gcc --version # Verify GCC works
+          Write-Host "GCC verification complete."
+
+      # 3. Run ./build.bat -gcc in the repo to build it.
+      - name: Build with GCC (Windows)
+        shell: powershell
+        run: |
+          Write-Host "Running build.bat -gcc..."
+          .\build.bat -gcc # Use .\ for current directory in PowerShell
+          Write-Host "build.bat -gcc completed."
+
+      # 4. Run ./dist/gha/packagezip from the base directory
+      - name: Package Binaries for Windows
+        shell: powershell
+        run: |
+          Write-Host "Running packagezip for Windows..."
+          .\dist\gha\packagezip # Run packagezip from base directory
+          Write-Host "packagezip for Windows completed."
+
+      # Debugging step: List files in root and dist/
+      - name: List Generated Files for Debugging (Windows)
+        shell: powershell
+        run: |
+          Write-Host "--- Listing files in repository root (Windows) ---"
+          Get-ChildItem -Path . | Format-List
+          Write-Host "--- Listing files recursively in dist/ (Windows) ---"
+          Get-ChildItem -Path dist -Recurse | Format-List
+          Write-Host "----------------------------------------"
+
+      - name: Upload Windows Binary Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tread-bin-WIN
+          path: ./tread-bin-WIN.zip
