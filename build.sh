@@ -92,7 +92,7 @@ fi
     echo "Warning: ./LICENSE not found, skipping copy."
   fi
 
-  clear
+  #clear
 
   if [ "$GCC_FLAG" -eq 1 ]; then
     COMPILER="gcc"
