@@ -88,21 +88,31 @@ REM Start logging all output
   if not exist dist md dist
   if not exist dist\2D md dist\2D
   if not exist dist\3D md dist\3D
+  if not exist dist\gha md dist\gha
   if not exist dist\libs md dist\libs
+
+  copy src\tread.h dist\
+
+  copy .gitignore dist\
+  copy README.md dist\
+  copy LICENSE dist\
 
   clear
 
   if %GCC_FLAG% EQU 1 (
     REM The notes about building.
-    gcc ./src/logger.c -o ./dist/logger.exe -luser32 -lgdi32
+    gcc ./src/logger.c -o ./dist/logger
     if exist dist\logger.exe (
       dist\logger.exe -t Note -c "Building with GCC..."
     )
 
+    REM Github Actions (ignore and keep here):
+    gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip
+
     REM Main working bits:
-    gcc ./src/seperate/launcher/launcher.c -o ./dist/Tread -lkernel32 -lm
+    REM gcc ./src/seperate/launcher/launcher.c -o ./dist/Tread -lkernel32 -lm
     gcc ./src/seperate/animator/animator.c -o ./dist/anim -lkernel32 -lm
-    gcc ./src/seperate/libloader/libloader.c -o ./dist/libloader.exe -lkernel32 -lm
+    gcc ./src/seperate/libloader/libloader.c -o ./dist/libloader -lkernel32 -lm
 
     REM Libs for libloader to load:
     gcc -shared ./src/seperate/libloader/libs/counter.c -o ./dist/libs/counter.dll -lm
@@ -124,15 +134,18 @@ REM Start logging all output
     del dist\logger.exe
   ) else if %CLANG_FLAG% EQU 1 (
     REM The notes about building.
-    clang ./src/logger.c -o ./dist/logger.exe -luser32 -lgdi32
+    clang ./src/logger.c -o ./dist/logger
     if exist dist\logger.exe (
       dist\logger.exe -t Note -c "Building with Clang..."
     )
 
+    REM Github Actions (ignore and keep here):
+    gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip
+
     REM Main working bits:
-    clang ./src/seperate/launcher/launcher.c -o ./dist/Tread -lkernel32 -lm
+    REM clang ./src/seperate/launcher/launcher.c -o ./dist/Tread -lkernel32 -lm
     clang ./src/seperate/animator/animator.c -o ./dist/anim -lkernel32 -lm
-    clang ./src/seperate/libloader/libloader.c -o ./dist/libloader.exe -lkernel32 -lm
+    clang ./src/seperate/libloader/libloader.c -o ./dist/libloader -lkernel32 -lm
 
     REM Libs for libloader to load:
     clang -shared ./src/seperate/libloader/libs/counter.c -o ./dist/libs/counter.dll -lm

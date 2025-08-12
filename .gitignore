@@ -5,11 +5,16 @@
 # Build folder
 dist/**/**/*
 
+# Build zips
+tread-bin-WIN.*
+tread-bin-UNIX.*
+
 # Executable binary files
 src/bin
 
 # Build log
 build.bat.log
+build.sh.log
 
 # Compiled object files
 *.o

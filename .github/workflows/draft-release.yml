@@ -1,0 +1,86 @@
+name: Draft New Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write     # needed to create/update releases
+  id-token: write     # for semantic-release auth if required
+  packages: write     # for any semantic-release plugins that touch packages
+
+jobs:
+  prepare-and-draft:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out your code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Get short (7 characters long) commit SHA code
+      - name: Extract short SHA
+        id: extract_sha
+        shell: bash
+        run: |
+          full_sha="${{ github.sha }}"
+          short_sha="${full_sha:0:7}"
+          echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
+
+      # 3. Extract only the commit description (body)
+      - name: Extract commit description
+        id: extract_desc
+        shell: bash
+        run: |
+          desc=$(git log -1 --pretty=%B | tail -n +3)
+          echo "commit_description<<EOF" >> $GITHUB_OUTPUT
+          echo "$desc" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 4. Create the draft pre-release with template
+      - name: Draft GitHub Release
+        uses: actions/create-release@v1
+        id: create_release # Added ID to reference its outputs later
+        with:
+          tag_name: v${{ steps.extract_sha.outputs.short_sha }} # Using short SHA in tag name for uniqueness
+          release_name: Pre-release v${{ steps.extract_sha.outputs.short_sha }}
+          draft: true
+          prerelease: true
+          body: |
+            Pre-release v${{ steps.extract_sha.outputs.short_sha }}
+            **Triggered by committer:** @${{ github.actor }}
+
+            ---
+
+            # What's changed?
+            ${{ steps.extract_desc.outputs.commit_description }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 5. Install Clang
+      - name: Install Clang Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+
+      # 6. Run ./build.sh -clang to build with clang
+      - name: Build with Clang
+        run: |
+          chmod +x ./build.sh # Make the build script executable
+          ./build.sh -clang
+
+      # 7. Run ./dist/gha/packagezip from the base directory
+      - name: Package Binaries for UNIX
+        run: ./dist/gha/packagezip # Assumes this executable is in dist/gha and creates tread-bin-UNIX.zip in the root
+
+      # 8. Attach tread-bin-UNIX.zip to the draft release
+      - name: Upload Tread UNIX Binary to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # URL from the draft release step
+          asset_path: ./tread-bin-UNIX.zip # Path to the generated zip file
+          asset_name: tread-bin-UNIX.zip
+          asset_content_type: application/zip # Set content type for proper handling

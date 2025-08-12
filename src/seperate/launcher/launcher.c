@@ -1,3 +1,11 @@
+// This whole file is currently broken. So I am commenting the whole thing out and replacing it with a simple just exit.
+
+int main() {
+  return 1;
+}
+
+/*
+
 // launcher.c - A simple game launcher for tread.h applications.
 //              This launcher displays a menu with ASCII art and allows the user
 //              to select and launch other compiled tread.h games.
@@ -196,3 +204,5 @@ void LaunchGame(MenuItem game) {
     InitLauncher();
   }
 }
+
+*/

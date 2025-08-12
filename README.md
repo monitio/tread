@@ -1,5 +1,9 @@
 # Tread
-- A simple but advanced terminal graphics library for C.
+> A simple but advanced terminal graphics library for C.
+
+---
+
+
 
 ---
 
@@ -66,7 +70,23 @@ clang -shared ./src/main.c -o ./dist/main.dll -lkernel32 -lm
 clang -shared -fPIC ./src/main.c -o ./dist/main.so -lm
 ```
 
-We also have a group of examples that are specifically only made for Windows at the moment but POSIX support is coming soon for them. You can compile them using: `build.bat -clang` for the Clang compiler or `build.bat -gcc` for the GCC compiler.
+We also have a group of examples that haven't been tested on POSIX systems yet but work on Windows.
+You can compile them with GCC using:
+```bash
+# On Windows:
+build.bat -gcc
+
+# On POSIX:
+./build.sh -gcc
+```
+And with Clang (better):
+```bash
+# On Windows:
+build.bat -clang
+
+# On POSIX:
+./build.sh -clang
+```
 
 ## Features
 - **Header-Only**: integrate quickly into new or existing C projects just by including `#include <tread.h>` and linking it to your compiler of choice.
