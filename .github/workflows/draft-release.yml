@@ -28,7 +28,9 @@ jobs:
         run: clang ./src/gha/gha.c -o ./dist/gha/gha
 
       - name: Run GHA Launcher (UNIX Build & Package)
-        run: ./dist/gha/gha
+        run: |
+          chmod +x ./build.sh
+          ./dist/gha/gha
 
       - name: Upload UNIX Binary Artifact
         uses: actions/upload-artifact@v4
