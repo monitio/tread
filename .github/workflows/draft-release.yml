@@ -42,20 +42,36 @@ jobs:
     name: Build for Windows
     runs-on: windows-latest
     steps:
-      - name: Install Clang via Chocolatey (LLVM)
-        # Install llvm-mingw, which provides Clang built for the MinGW-w64 environment.
-        # This version of Clang uses the GNU C runtime, avoiding MSVC deprecation warnings.
-        run: choco install llvm-mingw --no-progress --limit-output
+      - name: Install MSYS2 via Chocolatey
+        # MSYS2 provides a Unix-like environment on Windows and its own package manager (pacman)
+        # which we'll use to install the MinGW-w64 compatible Clang toolchain.
+        run: choco install msys2 --no-progress --limit-output
         shell: powershell
 
-      - name: Add Clang to PATH
+      - name: Add MSYS2 bin to PATH
+        # Add the MSYS2's bin directory to PATH so pacman can be executed
         run: |
-          $llvmPath = "C:\Program Files\LLVM\bin"
-          Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
-          echo "Added $llvmPath to GITHUB_PATH"
+          $msys2Path = "C:\tools\msys64\usr\bin" # Default installation path for Chocolatey's msys2
+          Add-Content -Path $env:GITHUB_PATH -Value $msys2Path
+          echo "Added $msys2Path to GITHUB_PATH"
         shell: powershell
 
-      - name: Verify Clang installation
+      - name: Install MinGW-w64 Clang via Pacman
+        # Use MSYS2's pacman to install the Clang toolchain that targets MinGW-w64.
+        # This ensures it uses the GNU C Runtime (CRT) instead of MSVC's UCRT.
+        # Run in bash shell provided by MSYS2 for pacman commands.
+        run: |
+          C:/tools/msys64/usr/bin/bash.exe -lc "pacman --noconfirm -S mingw-w64-x86_64-clang"
+        shell: powershell
+
+      - name: Add MinGW-w64 Clang to PATH
+        run: |
+          $mingwClangPath = "C:\tools\msys64\mingw64\bin"
+          Add-Content -Path $env:GITHUB_PATH -Value $mingwClangPath
+          echo "Added $mingwClangPath to GITHUB_PATH"
+        shell: powershell
+
+      - name: Verify Clang installation and target
         run: clang --version
         shell: powershell
 
@@ -102,7 +118,6 @@ jobs:
           name: tread-bin-WIN
           path: ./.
 
-      # (7 characters long SHA Code)
       - name: Extract short SHA
         id: extract_sha
         shell: bash
