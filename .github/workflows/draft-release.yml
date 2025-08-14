@@ -43,7 +43,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Install Clang via Chocolatey (LLVM)
-        run: choco install llvm --no-progress --limit-output
+        # Install llvm-mingw, which provides Clang built for the MinGW-w64 environment.
+        # This version of Clang uses the GNU C runtime, avoiding MSVC deprecation warnings.
+        run: choco install llvm-mingw --no-progress --limit-output
         shell: powershell
 
       - name: Add Clang to PATH
@@ -124,12 +126,12 @@ jobs:
       - name: Create Draft GitHub Release with Both Assets
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.extract_sha.outputs.short_sha }}
-          name: v${{ steps.extract_sha.outputs.short_sha }}
+          tag_name: v
+          name: v | ${{ steps.extract_sha.outputs.short_sha }}
           draft: true
           prerelease: true
           body: |
-            v${{ steps.extract_sha.outputs.short_sha }}
+            v | ${{ steps.extract_sha.outputs.short_sha }}
             **Triggered by committer:** @${{ github.actor }}
 
             ---
