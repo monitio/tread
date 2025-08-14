@@ -3,7 +3,7 @@
 
 ---
 
-
+[![.github/workflows/draft-release.yml](https://github.com/monitio/tread/actions/workflows/draft-release.yml/badge.svg?branch=main)](https://github.com/monitio/tread/actions/workflows/draft-release.yml)
 
 ---
 

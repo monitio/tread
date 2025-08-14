@@ -10,9 +10,9 @@ Unless your committing, just ignore this.
 ## Compilation
 With Clang (recommended):
 ```bash
-clang ./src/gha/packagezip.c -o ./dist/gha/packagezip
+clang ./src/gha/gha.c -o ./dist/gha/gha
 ```
 With GCC:
 ```bash
-gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip
+gcc ./src/gha/gha.c -o ./dist/gha/gha
 ```

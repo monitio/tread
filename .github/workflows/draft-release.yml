@@ -1,4 +1,4 @@
-name: Draft New Release
+name: Draft Combined Release
 
 on:
   push:
@@ -11,72 +11,123 @@ permissions:
   packages: write
 
 jobs:
-  # This job orchestrates the builds and release creation
-  release-orchestrator:
-    runs-on: ubuntu-latest # Can be ubuntu-latest or a small runner since it only calls other workflows and downloads artifacts
+  build-unix:
+    name: Build for UNIX
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Clang
+        run: sudo apt-get update && sudo apt-get install -y clang
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create dist/gha directory
+        run: mkdir -p dist/gha
+
+      - name: Compile GHA Launcher (UNIX)
+        run: clang ./src/gha/gha.c -o ./dist/gha/gha
+
+      - name: Run GHA Launcher (UNIX Build & Package)
+        run: ./dist/gha/gha
+
+      - name: Upload UNIX Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tread-bin-UNIX
+          path: ./tread-bin-UNIX.zip
+
+  build-windows:
+    name: Build for Windows
+    runs-on: windows-latest
+    steps:
+      - name: Install Clang via Chocolatey (LLVM)
+        run: choco install llvm --no-progress --limit-output
+        shell: powershell
+
+      - name: Add Clang to PATH
+        run: |
+          $llvmPath = "C:\Program Files\LLVM\bin"
+          Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
+          echo "Added $llvmPath to GITHUB_PATH"
+        shell: powershell
+
+      - name: Verify Clang installation
+        run: clang --version
+        shell: powershell
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create dist\gha directory
+        run: mkdir -p dist\gha
+        shell: powershell
+
+      - name: Compile GHA Launcher (Windows)
+        run: clang ./src/gha/gha.c -o ./dist/gha/gha.exe
+        shell: powershell
+
+      - name: Run GHA Launcher (Windows Build & Package)
+        run: .\dist\gha\gha.exe
+        shell: powershell
+
+      - name: Upload Windows Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tread-bin-WIN
+          path: ./tread-bin-WIN.zip
+
+  create-release:
+    name: Create Combined Draft Release
+    runs-on: ubuntu-latest
+    # This job depends on both build jobs completing successfully
+    needs: [build-unix, build-windows]
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 1. Get short (7 characters long) commit SHA code (needed for the release tag/name)
+      - name: Download UNIX Binary Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tread-bin-UNIX
+          path: ./.
+
+      - name: Download Windows Binary Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tread-bin-WIN
+          path: ./.
+
+      # (7 characters long SHA Code)
       - name: Extract short SHA
         id: extract_sha
         shell: bash
         run: |
           full_sha="${{ github.sha }}"
           short_sha="${full_sha:0:7}"
-          echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
 
-      # 2. Extract only the commit description (body)
       - name: Extract commit description
         id: extract_desc
         shell: bash
         run: |
-          desc=$(git log -1 --pretty=%B | tail -n +3)
-          echo "commit_description<<EOF" >> $GITHUB_OUTPUT
-          echo "$desc" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Use github.event.head_commit.message to get the full commit message.
+          # tail -n +3 attempts to remove the first two lines (subject line and empty line),
+          # assuming a conventional commit message structure. Adjust if your messages vary.
+          desc=$(echo "${{ github.event.head_commit.message }}" | tail -n +3)
+          echo "commit_description<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$desc" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
-      # 3. Call UNIX Build Workflow
-      - name: Call UNIX Build Workflow
-        # CORRECTED: Using 'main' branch for a static reference to the workflow
-        uses: monitio/tread/.github/workflows/build-unix.yml@main
-        id: unix_build
-        with: {} # Explicit empty 'with' block for workflows with no inputs
-
-      # 4. Call Windows Build Workflow
-      - name: Call Windows Build Workflow
-        # CORRECTED: Using 'main' branch for a static reference to the workflow
-        uses: monitio/tread/.github/workflows/build-win.yml@main
-        id: win_build
-        with:
-          short_sha: ${{ steps.extract_sha.outputs.short_sha }} # Pass extracted info as inputs
-          commit_description: ${{ steps.extract_desc.outputs.commit_description }}
-
-      # 5. Download UNIX Binary Artifact
-      - name: Download UNIX Binary Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tread-bin-UNIX # Name must match the artifact name in build-unix.yml
-          path: ./.
-
-      # 6. Download Windows Binary Artifact
-      - name: Download Windows Binary Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tread-bin-WIN # Name must match the artifact name in build-win.yml
-          path: ./.
-
-      # 7. Create the draft pre-release and attach both assets
       - name: Create Draft GitHub Release with Both Assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.extract_sha.outputs.short_sha }}
-          name: Pre-release v${{ steps.extract_sha.outputs.short_sha }}
+          name: v${{ steps.extract_sha.outputs.short_sha }}
           draft: true
           prerelease: true
           body: |
-            Pre-release v${{ steps.extract_sha.outputs.short_sha }}
+            v${{ steps.extract_sha.outputs.short_sha }}
             **Triggered by committer:** @${{ github.actor }}
 
             ---
@@ -87,4 +138,4 @@ jobs:
             ./tread-bin-UNIX.zip
             ./tread-bin-WIN.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for release creation
