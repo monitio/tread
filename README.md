@@ -9,7 +9,7 @@
 
 Tread is a header-only C library designed to provide a lightweight API for creating simple "graphics" with extra advanced features only using system API's in the terminal. It aims to hide away low-level terminal complexities while still offering an experience similar to Raylib but in the terminal and functionality of NCurses with a lot of configuration.
 
-It has recently been tested and made to fully work on Windows using either GCC or Clang from Mingw64 (latest version from [winlibs](https://winlibs.com)). While designed for cross-platform compatibility, specific POSIX environments will require further testing. So for now, **don't** use POSIX environments for running Tread.
+It has recently been tested and made to fully work on Windows using either GCC or Clang from Mingw64 (latest version from [winlibs](https://winlibs.com)). While designed for cross-platform compatibility, specific POSIX environments will require further testing. The actual terminal interfaces you make using POSIX environments and Tread haven't been tested yet. But, the compilation of the examples do compile using LLVM and Clang on Ubuntu according to [Github Actions](https://github.com/monitio/tread/actions).
 
 ---
 
