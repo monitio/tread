@@ -140,7 +140,7 @@ REM Start logging all output
     )
 
     REM Github Actions (ignore and keep here):
-    gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip
+    clang ./src/gha/packagezip.c -o ./dist/gha/packagezip
 
     REM Main working bits:
     REM clang ./src/seperate/launcher/launcher.c -o ./dist/Tread -lkernel32 -lm
