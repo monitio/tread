@@ -142,7 +142,7 @@ fi
     fi
 
     # Github Actions (ignore and keep here):
-    gcc ./src/gha/packagezip.c -o ./dist/gha/packagezip # Still using gcc as in original
+    $COMPILER ./src/gha/packagezip.c -o ./dist/gha/packagezip
 
     # Main working bits:
     $COMPILER ./src/seperate/launcher/launcher.c -o ./dist/Tread -lm
